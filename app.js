@@ -263,8 +263,9 @@ const YoloDetection = {
                     <button class="clear-btn" @click="clearResults">Clear</button>
                 </div>
                 <div class="result-content">
-                    <div class="result-image">
-                        <img :src="detectionResult.image_base64" alt="Detection Result" />
+                    <div class="result-image" style="position:relative; width:100%;">
+                        <img :src="originalImage" alt="Detection Result" ref="resultImg" @load="syncCanvas" style="width:100%; height:auto; display:block;"/>
+                        <canvas ref="overlay" style="position:absolute; left:0; top:0; pointer-events:none;"></canvas>
                     </div>
                     <div class="result-stats">
                         <div class="stat-item">
@@ -297,7 +298,9 @@ const YoloDetection = {
             loading: false,
             detectionResult: null,
             screenshotImage: null,
-            screenshotBlob: null
+            screenshotBlob: null,
+            originalImage: null,
+            objectUrl: null
         };
     },
     mounted() {
@@ -307,19 +310,35 @@ const YoloDetection = {
     },
     unmounted() {
         window.removeEventListener('screenshot-taken', this.handleScreenshot);
+        // 清理 blob URL
+        if (this.objectUrl) {
+            URL.revokeObjectURL(this.objectUrl);
+            this.objectUrl = null;
+        }
     },
     methods: {
         handleScreenshot(event) {
             console.log('收到截图事件:', event.detail);
+            // 清理旧的 blob URL
+            if (this.objectUrl) {
+                URL.revokeObjectURL(this.objectUrl);
+            }
+            
+            // 保存新的 blob URL
+            this.objectUrl = event.detail.imageUrl;
             this.screenshotImage = event.detail.imageUrl;
             this.screenshotBlob = event.detail.blob;
+            this.originalImage = event.detail.imageUrl;
             this.detectionResult = null;
         },
         async detectObjects() {
-            if (!this.screenshotBlob) return;
+            if (!this.screenshotBlob || !this.screenshotImage) return;
             
             try {
                 this.loading = true;
+                
+                // 保存原始图像用于显示结果
+                this.originalImage = this.screenshotImage;
                 
                 // 创建FormData对象
                 const formData = new FormData();
@@ -336,7 +355,13 @@ const YoloDetection = {
                 }
 
                 this.detectionResult = await response.json();
-                this.clearScreenshot();
+                
+                // 清除预览图像（但保留 originalImage 用于结果显示）
+                this.screenshotImage = null;
+                this.screenshotBlob = null;
+                
+                // 在下一帧绘制检测框
+                this.$nextTick(() => this.syncCanvas());
             } catch (error) {
                 console.error('Detection failed:', error);
                 alert('Detection failed: ' + error.message);
@@ -344,13 +369,86 @@ const YoloDetection = {
                 this.loading = false;
             }
         },
+        syncCanvas() {
+            const img = this.$refs.resultImg;
+            const canvas = this.$refs.overlay;
+            if (!img || !canvas) return;
+            
+            const rect = img.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            this.drawDetections();
+        },
+        drawDetections() {
+            const canvas = this.$refs.overlay;
+            const img = this.$refs.resultImg;
+            if (!canvas || !img || !this.detectionResult) {
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / img.naturalWidth;
+            const scaleY = canvas.height / img.naturalHeight;
+
+            for (const d of this.detectionResult.detections || []) {
+                const [x1, y1, x2, y2] = d.bbox;
+                const x = x1 * scaleX;
+                const y = y1 * scaleY;
+                const w = (x2 - x1) * scaleX;
+                const h = (y2 - y1) * scaleY;
+                
+                // 绘制边界框
+                ctx.strokeStyle = '#00ff00';  // 绿色
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, w, h);
+                
+                // 绘制标签
+                const label = `${d.label} ${(d.confidence * 100).toFixed(1)}%`;
+                ctx.font = 'bold 14px Arial';
+                ctx.textBaseline = 'top';
+                const textW = ctx.measureText(label).width + 8;
+                const textH = 20;
+                
+                // 标签背景
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+                ctx.fillRect(x, Math.max(0, y - textH - 2), textW, textH);
+                
+                // 标签文字
+                ctx.fillStyle = '#000';
+                ctx.fillText(label, x + 4, Math.max(2, y - textH));
+            }
+        },
         clearScreenshot() {
             this.screenshotImage = null;
             this.screenshotBlob = null;
+            this.originalImage = null;
+            if (this.objectUrl) {
+                URL.revokeObjectURL(this.objectUrl);
+                this.objectUrl = null;
+            }
+            const canvas = this.$refs.overlay;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx && ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         },
         clearResults() {
             this.detectionResult = null;
-            this.clearScreenshot();
+            this.originalImage = null;
+            if (this.objectUrl) {
+                URL.revokeObjectURL(this.objectUrl);
+                this.objectUrl = null;
+            }
+            const canvas = this.$refs.overlay;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx && ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         }
     }
 };
