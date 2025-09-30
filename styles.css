@@ -32,8 +32,9 @@ body { margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden; 
 .delete-btn:hover { color: #ff0000; }
 .plot-container { flex: 1; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; min-height: 0; }
 #plot-container { flex: 1; min-height: 300px; }
-.yolo-container { height: 100%; display: flex; flex-direction: column; gap: 20px; overflow: hidden; }
-.yolo-controls { position: relative; min-height: 150px; }
+.yolo-container { height: 100%; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+.yolo-controls { position: relative; }
+.yolo-controls:not(:empty) { min-height: 150px; margin-bottom: 20px; }
 .screenshot-hint { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px dashed #ddd; }
 .hint-icon { font-size: 32px; margin-bottom: 10px; }
 .preview-panel { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
