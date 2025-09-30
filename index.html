@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTS Analysis System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/vue@3.3.4/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4.2.4/dist/vue-router.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="main-layout">
+            <div class="map-container">
+                <div id="map"></div>
+                <div v-if="currentRoute === '/route3'" class="map-tools">
+                    <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }">
+                        <span class="icon">📷</span>
+                        Screenshot
+                    </button>
+                </div>
+            </div>
+            <div class="gutter"></div>
+            <div class="right-panel">
+                <div class="route-tabs">
+                    <router-link to="/route1" class="route-tab">Router1</router-link>
+                    <router-link to="/route2" class="route-tab">Router2</router-link>
+                    <router-link to="/route3" class="route-tab">router3</router-link>
+                </div>
+                <div class="content-panel">
+                    <router-view v-slot="{ Component }">
+                        <component :is="Component" />
+                    </router-view>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+        // 全局事件总线
+        window.eventBus = {
+            events: {},
+            
+            on(eventName, fn) {
+                this.events[eventName] = this.events[eventName] || [];
+                this.events[eventName].push(fn);
+            },
+            
+            off(eventName, fn) {
+                if (this.events[eventName]) {
+                    if (fn) {
+                        this.events[eventName] = this.events[eventName].filter(f => f !== fn);
+                    } else {
+                        delete this.events[eventName];
+                    }
+                }
+            },
+            
+            emit(eventName, data) {
+                if (this.events[eventName]) {
+                    this.events[eventName].forEach(fn => fn(data));
+                }
+            }
+        };
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
+
