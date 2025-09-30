@@ -10,8 +10,7 @@ const TimeSeriesAnalysis = {
                 </div>
                 <div class="usage-hint" v-if="!hasPoints">
                     <div class="hint-icon">📍</div>
-                    <p>请在地图上单击以选择分析点</p>
-                    <p class="hint-subtext">Click on the map to select points for analysis</p>
+                    <p>Click on the map to select points for analysis</p>
                 </div>
                 <div id="point-cards"></div>
             </div>
