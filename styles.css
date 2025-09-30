@@ -18,78 +18,33 @@ body { margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden; 
     top: 10px;
     left: 60px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    min-width: 400px;
-    max-width: 450px;
-}
-
-.search-box-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.98);
-    border-radius: 4px 4px 0 0;
-    border-bottom: 1px solid #e0e0e0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    cursor: move;
-}
-
-.search-box-header i.fa-search {
-    margin-right: 6px;
-    color: #1976d2;
-}
-
-.search-box-minimize {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #666;
-    font-size: 14px;
-    padding: 4px 8px;
+    gap: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     border-radius: 2px;
-    transition: all 0.2s;
-}
-
-.search-box-minimize:hover {
-    background: #f0f0f0;
-    color: #333;
-}
-
-.search-box-content {
-    padding: 12px;
-}
-
-.search-input-group {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
 }
 
 .search-input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 2px;
+    width: 320px;
+    padding: 7px 12px;
+    border: none;
+    border-radius: 2px 0 0 2px;
     font-size: 13px;
     outline: none;
-    transition: border-color 0.2s;
+    background: rgba(255, 255, 255, 0.95);
+    transition: background 0.2s;
 }
 
 .search-input:focus {
-    border-color: #1976d2;
+    background: #fff;
 }
 
 .search-btn {
     width: 36px;
-    height: 36px;
+    height: 34px;
     background: #1976d2;
     border: none;
-    border-radius: 2px;
+    border-radius: 0 2px 2px 0;
     color: white;
     cursor: pointer;
     display: flex;
@@ -100,12 +55,6 @@ body { margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden; 
 
 .search-btn:hover {
     background: #1565c0;
-}
-
-.search-hint {
-    font-size: 11px;
-    color: #999;
-    font-style: italic;
 }
 
 /* 位置高亮点动画 */

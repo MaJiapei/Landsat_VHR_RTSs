@@ -1342,20 +1342,23 @@ const measureApp = {
         // 位置搜索功能
         searchLocation() {
             const coords = this.searchCoordinates.trim();
+            let lon, lat;
+            
+            // 如果没有输入，使用默认坐标
             if (!coords) {
-                alert('Please enter coordinates');
-                return;
-            }
+                lon = 92.74585837;
+                lat = 35.07621963;
+            } else {
+                // 解析坐标 (支持多种格式)
+                const parts = coords.split(/[,\s]+/).filter(p => p);
+                if (parts.length !== 2) {
+                    alert('Invalid format. Please use: longitude, latitude');
+                    return;
+                }
 
-            // 解析坐标 (支持多种格式)
-            const parts = coords.split(/[,\s]+/).filter(p => p);
-            if (parts.length !== 2) {
-                alert('Invalid format. Please use: longitude, latitude');
-                return;
+                lon = parseFloat(parts[0]);
+                lat = parseFloat(parts[1]);
             }
-
-            const lon = parseFloat(parts[0]);
-            const lat = parseFloat(parts[1]);
 
             if (isNaN(lon) || isNaN(lat)) {
                 alert('Invalid coordinates. Please enter valid numbers');
@@ -1427,10 +1430,9 @@ const measureApp = {
         // 初始化搜索框拖动功能
         initSearchBoxDrag() {
             const searchBox = document.getElementById('locationSearchBox');
-            const header = document.getElementById('searchBoxHeader');
             const mapContainer = document.querySelector('.map-container');
             
-            if (!searchBox || !header || !mapContainer) return;
+            if (!searchBox || !mapContainer) return;
 
             let isDragging = false;
             let currentX;
@@ -1470,8 +1472,11 @@ const measureApp = {
                 yOffset = parseInt(computedStyle.top) || 10;
             };
 
-            header.addEventListener('mousedown', (e) => {
-                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+            searchBox.addEventListener('mousedown', (e) => {
+                // 如果点击的是输入框或按钮，不触发拖动
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'I') {
+                    return;
+                }
                 
                 // 如果是首次拖动，获取初始位置
                 if (xOffset === 0 && yOffset === 0) {
@@ -1481,7 +1486,7 @@ const measureApp = {
                 initialX = e.clientX - xOffset;
                 initialY = e.clientY - yOffset;
                 isDragging = true;
-                header.style.cursor = 'grabbing';
+                searchBox.style.cursor = 'grabbing';
             });
 
             document.addEventListener('mousemove', (e) => {
@@ -1499,9 +1504,12 @@ const measureApp = {
             document.addEventListener('mouseup', () => {
                 if (isDragging) {
                     isDragging = false;
-                    header.style.cursor = 'move';
+                    searchBox.style.cursor = 'move';
                 }
             });
+
+            // 设置初始光标样式
+            searchBox.style.cursor = 'move';
 
             // 监听窗口大小变化，确保搜索框始终在可见区域内
             window.addEventListener('resize', () => {
@@ -1529,7 +1537,14 @@ const measureApp = {
 };
 
 // 合并测量功能到主应用
-Object.assign(app._component.data(), measureApp.data());
+const originalData = app._component.data;
+app._component.data = function() {
+    return {
+        ...originalData.call(this),
+        ...measureApp.data()
+    };
+};
+
 Object.assign(app._component.methods, measureApp.methods);
 if (!app._component.watch) app._component.watch = {};
 Object.assign(app._component.watch, measureApp.watch);
