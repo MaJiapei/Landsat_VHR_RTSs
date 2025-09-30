@@ -710,8 +710,9 @@ const app = Vue.createApp({
                 const w = Math.abs(p2.x - p1.x);
                 const h = Math.abs(p2.y - p1.y);
 
-                if (w < 5 || h < 5) {
-                    throw new Error('Selection too small');
+                if (w < 10 || h < 10) {
+                    alert('截图范围太小，请选择更大的区域');
+                    return;
                 }
 
                 // 处理 DPR 缩放（html2canvas 可能按 devicePixelRatio 放大）
@@ -722,6 +723,12 @@ const app = Vue.createApp({
                 const sy = Math.round(y * scaleY);
                 const swidth = Math.round(w * scaleX);
                 const sheight = Math.round(h * scaleY);
+
+                // 确保缩放后的尺寸有效（至少10x10像素）
+                if (swidth < 10 || sheight < 10) {
+                    alert('截图区域太小（缩放后尺寸不足），请选择更大的区域');
+                    return;
+                }
 
                 // 裁剪到所选区域
                 const cropped = document.createElement('canvas');
