@@ -8,6 +8,11 @@ const TimeSeriesAnalysis = {
                 <h3>Selected Points</h3>
                     <button class="clear-all-btn" @click="clearAllPoints">Clear All</button>
                 </div>
+                <div class="usage-hint" v-if="!hasPoints">
+                    <div class="hint-icon">📍</div>
+                    <p>请在地图上单击以选择分析点</p>
+                    <p class="hint-subtext">Click on the map to select points for analysis</p>
+                </div>
                 <div id="point-cards"></div>
             </div>
             <div class="plot-container">
@@ -15,6 +20,11 @@ const TimeSeriesAnalysis = {
             </div>
         </div>
     `,
+    data() {
+        return {
+            pointCount: 0
+        };
+    },
     mounted() {
         this.initMapHandlers();
     },
@@ -37,6 +47,7 @@ const TimeSeriesAnalysis = {
             window.map.addLayer(window.pointsLayer);
 
             window.points = [];
+            this.pointCount = 0;
             window.nextPointIndex = 1;
             window.allColors = [
                 '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
@@ -109,9 +120,10 @@ const TimeSeriesAnalysis = {
                     data: data
                 };
                 
-                window.points.push(point);
-                this.updatePointCards();
-                this.updatePlot();
+            window.points.push(point);
+            this.pointCount = window.points.length;
+            this.updatePointCards();
+            this.updatePlot();
                 
             } catch (error) {
                 console.error('Analysis failed:', error);
@@ -177,6 +189,7 @@ const TimeSeriesAnalysis = {
                 // OpenLayers 移除要素
                 window.pointsLayer.getSource().removeFeature(window.points[pointIndex].marker);
                 window.points.splice(pointIndex, 1);
+                this.pointCount = window.points.length;
                 this.updatePointCards();
                 this.updatePlot();
             }
@@ -186,6 +199,7 @@ const TimeSeriesAnalysis = {
                 // OpenLayers 清空所有要素
                 window.pointsLayer.getSource().clear();
                 window.points = [];
+                this.pointCount = 0;
                 this.updatePointCards();
                 this.updatePlot();
             }
@@ -284,6 +298,11 @@ const TimeSeriesAnalysis = {
         
         // 重置点索引
         window.nextPointIndex = 1;
+    },
+    computed: {
+        hasPoints() {
+            return this.pointCount > 0;
+        }
     }
 };
 
