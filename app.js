@@ -13,7 +13,10 @@ const TimeSeriesAnalysis = {
     template: `
         <div class="time-series-container">
             <div class="points-container">
-                <h3>Selected Points</h3>
+                <div class="points-header">
+                    <h3>Selected Points</h3>
+                    <button class="clear-all-btn" @click="clearAllPoints">清除全部</button>
+                </div>
                 <div id="point-cards"></div>
             </div>
             <div class="plot-container">
@@ -164,6 +167,18 @@ const TimeSeriesAnalysis = {
             if (pointIndex !== -1) {
                 window.map.removeLayer(window.points[pointIndex].marker);
                 window.points.splice(pointIndex, 1);
+                this.updatePointCards();
+                this.updatePlot();
+            }
+        },
+        clearAllPoints() {
+            if (window.points && window.points.length > 0) {
+                window.points.forEach(point => {
+                    if (point.marker) {
+                        window.map.removeLayer(point.marker);
+                    }
+                });
+                window.points = [];
                 this.updatePointCards();
                 this.updatePlot();
             }
