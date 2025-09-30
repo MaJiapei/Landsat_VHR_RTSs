@@ -611,6 +611,13 @@ const app = Vue.createApp({
         }
     },
     mounted() {
+        // 检测页面刷新，强制回到home
+        const navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0 && navEntries[0].type === 'reload') {
+            // 页面刷新时，重定向到home
+            this.$router.replace('/');
+        }
+        
         // 初始化地图
         this.initMap();
         this.currentRoute = this.$route.path;
