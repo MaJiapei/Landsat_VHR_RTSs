@@ -1152,7 +1152,7 @@ const app = Vue.createApp({
     }
 });
 
-// 添加测量功能
+// 添加测量功能和位置搜索功能
 const measureApp = {
     data() {
         return {
@@ -1168,6 +1168,9 @@ const measureApp = {
             measureTooltip: null,
             measureSketch: null,
             measureLayer: null,
+            searchCoordinates: '',  // 搜索坐标输入
+            searchBoxMinimized: false,  // 搜索框是否最小化
+            locationMarker: null,  // 位置标记
         }
     },
     methods: {
@@ -1335,6 +1338,180 @@ const measureApp = {
                 this.measureTooltip = null;
             }
         },
+
+        // 位置搜索功能
+        searchLocation() {
+            const coords = this.searchCoordinates.trim();
+            if (!coords) {
+                alert('Please enter coordinates');
+                return;
+            }
+
+            // 解析坐标 (支持多种格式)
+            const parts = coords.split(/[,\s]+/).filter(p => p);
+            if (parts.length !== 2) {
+                alert('Invalid format. Please use: longitude, latitude');
+                return;
+            }
+
+            const lon = parseFloat(parts[0]);
+            const lat = parseFloat(parts[1]);
+
+            if (isNaN(lon) || isNaN(lat)) {
+                alert('Invalid coordinates. Please enter valid numbers');
+                return;
+            }
+
+            if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+                alert('Coordinates out of range. Longitude: -180 to 180, Latitude: -90 to 90');
+                return;
+            }
+
+            // 转换坐标并定位
+            const coordinate = ol.proj.fromLonLat([lon, lat]);
+            
+            // 移动地图到目标位置
+            window.map.getView().animate({
+                center: coordinate,
+                zoom: 16,
+                duration: 1000
+            });
+
+            // 创建高亮标记
+            this.createLocationMarker(coordinate);
+        },
+
+        // 创建位置标记
+        createLocationMarker(coordinate) {
+            // 移除旧标记
+            if (this.locationMarker) {
+                window.map.removeOverlay(this.locationMarker);
+            }
+
+            // 创建标记元素
+            const markerElement = document.createElement('div');
+            markerElement.style.cssText = `
+                width: 20px;
+                height: 20px;
+                background: #ff4444;
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+                animation: location-pulse 1s ease-in-out infinite;
+            `;
+
+            // 创建 Overlay
+            this.locationMarker = new ol.Overlay({
+                element: markerElement,
+                positioning: 'center-center',
+                stopEvent: false,
+            });
+
+            this.locationMarker.setPosition(coordinate);
+            window.map.addOverlay(this.locationMarker);
+
+            // 3秒后移除标记
+            setTimeout(() => {
+                if (this.locationMarker) {
+                    window.map.removeOverlay(this.locationMarker);
+                    this.locationMarker = null;
+                }
+            }, 3000);
+        },
+
+        // 切换搜索框最小化状态
+        toggleSearchBox() {
+            this.searchBoxMinimized = !this.searchBoxMinimized;
+        },
+
+        // 初始化搜索框拖动功能
+        initSearchBoxDrag() {
+            const searchBox = document.getElementById('locationSearchBox');
+            const header = document.getElementById('searchBoxHeader');
+            const mapContainer = document.querySelector('.map-container');
+            
+            if (!searchBox || !header || !mapContainer) return;
+
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            let xOffset = 0;
+            let yOffset = 0;
+
+            // 限制位置在地图容器内
+            const constrainPosition = () => {
+                const mapRect = mapContainer.getBoundingClientRect();
+                const boxRect = searchBox.getBoundingClientRect();
+                
+                // 计算相对于地图容器的边界
+                const minX = 10;
+                const maxX = mapRect.width - boxRect.width - 10;
+                const minY = 10;
+                const maxY = mapRect.height - boxRect.height - 10;
+                
+                // 限制 X 坐标
+                if (xOffset < minX) xOffset = minX;
+                if (xOffset > maxX) xOffset = maxX;
+                
+                // 限制 Y 坐标
+                if (yOffset < minY) yOffset = minY;
+                if (yOffset > maxY) yOffset = maxY;
+                
+                searchBox.style.left = `${xOffset}px`;
+                searchBox.style.top = `${yOffset}px`;
+            };
+
+            // 获取初始位置
+            const getInitialOffset = () => {
+                const computedStyle = window.getComputedStyle(searchBox);
+                xOffset = parseInt(computedStyle.left) || 60;
+                yOffset = parseInt(computedStyle.top) || 10;
+            };
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+                
+                // 如果是首次拖动，获取初始位置
+                if (xOffset === 0 && yOffset === 0) {
+                    getInitialOffset();
+                }
+                
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+                isDragging = true;
+                header.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    constrainPosition();
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    header.style.cursor = 'move';
+                }
+            });
+
+            // 监听窗口大小变化，确保搜索框始终在可见区域内
+            window.addEventListener('resize', () => {
+                // 获取当前位置（如果还没有拖动过）
+                if (xOffset === 0 && yOffset === 0) {
+                    getInitialOffset();
+                }
+                constrainPosition();
+            });
+        },
     },
     watch: {
         measureType(newVal) {
@@ -1342,6 +1519,12 @@ const measureApp = {
                 this.removeMeasureInteraction();
             }
         }
+    },
+    mounted() {
+        // 初始化搜索框拖动功能
+        this.$nextTick(() => {
+            this.initSearchBoxDrag();
+        });
     }
 };
 
@@ -1350,6 +1533,13 @@ Object.assign(app._component.data(), measureApp.data());
 Object.assign(app._component.methods, measureApp.methods);
 if (!app._component.watch) app._component.watch = {};
 Object.assign(app._component.watch, measureApp.watch);
+
+// 合并 mounted 钩子
+const originalMounted = app._component.mounted;
+app._component.mounted = function() {
+    if (originalMounted) originalMounted.call(this);
+    if (measureApp.mounted) measureApp.mounted.call(this);
+};
 
 app.use(router);
 app.mount('#app');

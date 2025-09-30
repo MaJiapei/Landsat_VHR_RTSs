@@ -16,6 +16,30 @@
         <div class="main-layout">
             <div class="map-container">
                 <div id="map"></div>
+                <!-- 位置搜索框 -->
+                <div class="location-search-box" id="locationSearchBox">
+                    <div class="search-box-header" id="searchBoxHeader">
+                        <span><i class="fas fa-search"></i> Location Search</span>
+                        <button class="search-box-minimize" @click="toggleSearchBox" title="Minimize">
+                            <i class="fas" :class="searchBoxMinimized ? 'fa-plus' : 'fa-minus'"></i>
+                        </button>
+                    </div>
+                    <div class="search-box-content" v-show="!searchBoxMinimized">
+                        <div class="search-input-group">
+                            <input 
+                                type="text" 
+                                v-model="searchCoordinates" 
+                                placeholder="Longitude, Latitude (e.g., 84.72335101, 28.87951724)"
+                                class="search-input"
+                                @keyup.enter="searchLocation"
+                            />
+                            <button @click="searchLocation" class="search-btn" title="Search">
+                                <i class="fas fa-location-arrow"></i>
+                            </button>
+                        </div>
+                        <div class="search-hint">Enter coordinates in format: longitude, latitude</div>
+                    </div>
+                </div>
                 <!-- 测量工具 -->
                 <div class="measure-tools">
                     <button @click="toggleMeasure('distance')" class="measure-btn" :class="{ active: measureType === 'distance' }" title="Measure Distance">
