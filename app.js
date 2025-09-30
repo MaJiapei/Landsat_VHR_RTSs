@@ -54,6 +54,11 @@ const TimeSeriesAnalysis = {
             const lng = e.latlng.lng;
             
             try {
+                // 获取根实例来更新全局加载状态
+                const root = this.$root || this;
+                if (root.timeseriesLoading !== undefined) {
+                    root.timeseriesLoading = true;
+                }
                 const response = await fetch('http://localhost:8000/api/analyze', {
                     method: 'POST',
                     headers: {
@@ -99,6 +104,12 @@ const TimeSeriesAnalysis = {
             } catch (error) {
                 console.error('Analysis failed:', error);
                 alert('Analysis failed: ' + error.message);
+            } finally {
+                // 重置全局加载状态
+                const root = this.$root || this;
+                if (root.timeseriesLoading !== undefined) {
+                    root.timeseriesLoading = false;
+                }
             }
         },
         getNextAvailableColor() {
@@ -486,7 +497,8 @@ const app = Vue.createApp({
             isScreenshotMode: false,
             screenshotRect: null,
             screenshotImage: null,
-            screenshotBlob: null
+            screenshotBlob: null,
+            timeseriesLoading: false
         };
     },
     watch: {

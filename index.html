@@ -20,6 +20,13 @@
                         Screenshot
                     </button>
                 </div>
+                <!-- 地图加载提示（用于 route2 时间序列分析） -->
+                <div v-if="timeseriesLoading && currentRoute === '/route2'" class="map-loading-overlay">
+                    <div class="map-loading-content">
+                        <div class="map-loading-spinner"></div>
+                        <p>Processing...</p>
+                    </div>
+                </div>
             </div>
             <div class="gutter"></div>
             <div class="right-panel">
