@@ -1034,8 +1034,22 @@ const app = Vue.createApp({
             if (!app.$data.isScreenshotMode) return;
 
             e.preventDefault();
+            e.stopPropagation();
+            
             const mapElement = window.map.getTargetElement();
-            const startPixel = [e.offsetX, e.offsetY];
+            const rect = mapElement.getBoundingClientRect();
+            
+            // 获取相对于地图容器的坐标
+            const getRelativeCoords = (event) => {
+                const mapRect = mapElement.getBoundingClientRect();
+                return {
+                    x: event.clientX - mapRect.left,
+                    y: event.clientY - mapRect.top
+                };
+            };
+            
+            const startCoords = getRelativeCoords(e);
+            const startPixel = [startCoords.x, startCoords.y];
             let overlayElement = null;
 
             const onMouseMove = (moveEvent) => {
@@ -1043,7 +1057,8 @@ const app = Vue.createApp({
                     overlayElement.remove();
                 }
 
-                const endPixel = [moveEvent.offsetX, moveEvent.offsetY];
+                const endCoords = getRelativeCoords(moveEvent);
+                const endPixel = [endCoords.x, endCoords.y];
                 const minX = Math.min(startPixel[0], endPixel[0]);
                 const minY = Math.min(startPixel[1], endPixel[1]);
                 const maxX = Math.max(startPixel[0], endPixel[0]);
@@ -1067,10 +1082,11 @@ const app = Vue.createApp({
             const onMouseUp = async (upEvent) => {
                 mapElement.removeEventListener('mousemove', onMouseMove);
                 mapElement.removeEventListener('mouseup', onMouseUp);
-                mapElement.style.cursor = '';
+                mapElement.style.cursor = 'crosshair';
                 
                 if (overlayElement) {
-                    const endPixel = [upEvent.offsetX, upEvent.offsetY];
+                    const endCoords = getRelativeCoords(upEvent);
+                    const endPixel = [endCoords.x, endCoords.y];
                     const minX = Math.min(startPixel[0], endPixel[0]);
                     const minY = Math.min(startPixel[1], endPixel[1]);
                     const maxX = Math.max(startPixel[0], endPixel[0]);
