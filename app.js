@@ -6,7 +6,7 @@ const TimeSeriesAnalysis = {
             <div class="points-container">
                 <div class="points-header">
                 <h3>Selected Points</h3>
-                    <button class="clear-all-btn" @click="clearAllPoints">清除全部</button>
+                    <button class="clear-all-btn" @click="clearAllPoints">Clear All</button>
                 </div>
                 <div id="point-cards"></div>
             </div>
