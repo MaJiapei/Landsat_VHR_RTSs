@@ -16,6 +16,15 @@
         <div class="main-layout">
             <div class="map-container">
                 <div id="map"></div>
+                <!-- 测量工具 -->
+                <div class="measure-tools">
+                    <button @click="toggleMeasure('distance')" class="measure-btn" :class="{ active: measureType === 'distance' }" title="Measure Distance">
+                        <i class="fas fa-ruler"></i>
+                    </button>
+                    <button @click="toggleMeasure('area')" class="measure-btn" :class="{ active: measureType === 'area' }" title="Measure Area">
+                        <i class="fas fa-draw-polygon"></i>
+                    </button>
+                </div>
                 <div v-if="currentRoute === '/route3'" class="map-tools">
                     <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }">
                         <span class="icon">📷</span>

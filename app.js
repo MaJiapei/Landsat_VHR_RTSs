@@ -603,6 +603,11 @@ const app = Vue.createApp({
                 this.isPanelFixed = false;
                 this.isPanelVisible = false;
             }
+            // 清理测量工具
+            if (this.measureType) {
+                this.measureType = null;
+                this.removeMeasureInteraction();
+            }
         }
     },
     mounted() {
@@ -834,7 +839,7 @@ const app = Vue.createApp({
             // 添加图层切换控件（右下角，可折叠）
             const layerSwitcherContainer = document.createElement('div');
             layerSwitcherContainer.className = 'ol-layer-switcher-container';
-            layerSwitcherContainer.style.cssText = 'position: absolute; bottom: 30px; right: 10px; z-index: 1000;';
+            layerSwitcherContainer.style.cssText = 'position: absolute; bottom: 30px; left: 10px; z-index: 1000;';
             
             // 折叠/展开按钮
             const toggleButton = document.createElement('button');
@@ -846,7 +851,7 @@ const app = Vue.createApp({
             // 图层面板
             const layerSwitcher = document.createElement('div');
             layerSwitcher.className = 'ol-layer-switcher-panel';
-            layerSwitcher.style.cssText = 'background: rgba(255,255,255,0.95); padding: 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: 400px; overflow-y: auto; margin-bottom: 8px; display: none; min-width: 200px;';
+            layerSwitcher.style.cssText = 'background: rgba(255,255,255,0.95); padding: 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: 400px; overflow-y: auto; margin-bottom: 8px; display: none; min-width: 200px; position: absolute; bottom: 48px; left: 0;';
             
             // 标题栏
             const layerHeader = document.createElement('div');
@@ -1146,6 +1151,205 @@ const app = Vue.createApp({
         }
     }
 });
+
+// 添加测量功能
+const measureApp = {
+    data() {
+        return {
+            isPanelFixed: false,
+            isPanelVisible: false,
+            isScreenshotMode: false,
+            timeseriesLoading: false,
+            panelHideTimer: null,
+            screenshotOverlay: null,
+            measureType: null,  // 'distance' 或 'area' 或 null
+            measureDraw: null,  // 绘图交互
+            measureTooltipElement: null,
+            measureTooltip: null,
+            measureSketch: null,
+            measureLayer: null,
+        }
+    },
+    methods: {
+        // 创建测量提示框
+        createMeasureTooltip() {
+            if (this.measureTooltipElement) {
+                this.measureTooltipElement.parentNode.removeChild(this.measureTooltipElement);
+            }
+            this.measureTooltipElement = document.createElement('div');
+            this.measureTooltipElement.className = 'ol-tooltip ol-tooltip-measure';
+            this.measureTooltip = new ol.Overlay({
+                element: this.measureTooltipElement,
+                offset: [0, -15],
+                positioning: 'bottom-center',
+                stopEvent: false,
+                insertFirst: false,
+            });
+            window.map.addOverlay(this.measureTooltip);
+        },
+
+        // 格式化长度
+        formatLength(line) {
+            const length = ol.sphere.getLength(line);
+            let output;
+            if (length > 1000) {
+                output = (Math.round(length / 1000 * 100) / 100) + ' km';
+            } else {
+                output = (Math.round(length * 100) / 100) + ' m';
+            }
+            return output;
+        },
+
+        // 格式化面积
+        formatArea(polygon) {
+            const area = ol.sphere.getArea(polygon);
+            let output;
+            if (area > 1000000) {
+                output = (Math.round(area / 1000000 * 100) / 100) + ' km²';
+            } else {
+                output = (Math.round(area * 100) / 100) + ' m²';
+            }
+            return output;
+        },
+
+        // 切换测量工具
+        toggleMeasure(type) {
+            // 如果点击当前激活的工具，则关闭它
+            if (this.measureType === type) {
+                this.measureType = null;
+                this.removeMeasureInteraction();
+                // 清除所有测量图形
+                if (this.measureLayer) {
+                    this.measureLayer.getSource().clear();
+                }
+                return;
+            }
+
+            this.measureType = type;
+            this.removeMeasureInteraction();
+            
+            // 清除之前的测量图形
+            if (this.measureLayer) {
+                this.measureLayer.getSource().clear();
+            }
+
+            // 创建绘图图层（如果不存在）
+            if (!this.measureLayer) {
+                this.measureLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector(),
+                    style: new ol.style.Style({
+                        fill: new ol.style.Fill({
+                            color: 'rgba(255, 255, 255, 0.4)',
+                        }),
+                        stroke: new ol.style.Stroke({
+                            color: '#1976d2',
+                            width: 2,
+                        }),
+                        image: new ol.style.Circle({
+                            radius: 4,
+                            stroke: new ol.style.Stroke({
+                                color: '#1976d2',
+                                width: 2,
+                            }),
+                            fill: new ol.style.Fill({
+                                color: '#fff',
+                            }),
+                        }),
+                    }),
+                });
+                window.map.addLayer(this.measureLayer);
+            }
+
+            // 创建绘图交互
+            this.measureDraw = new ol.interaction.Draw({
+                source: this.measureLayer.getSource(),
+                type: type === 'area' ? 'Polygon' : 'LineString',
+                    style: new ol.style.Style({
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 255, 255, 0.4)',
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: '#1976d2',
+                        lineDash: [6, 6],
+                        width: 2,
+                    }),
+                    image: new ol.style.Circle({
+                        radius: 4,
+                        stroke: new ol.style.Stroke({
+                            color: '#1976d2',
+                            width: 2,
+                        }),
+                        fill: new ol.style.Fill({
+                            color: '#fff',
+                        }),
+                    }),
+                }),
+            });
+
+            // 创建测量提示
+            this.createMeasureTooltip();
+
+            // 添加绘图事件监听器
+            this.measureDraw.on('drawstart', (evt) => {
+                this.measureSketch = evt.feature;
+
+                let tooltipCoord = evt.coordinate;
+
+                this.measureSketch.getGeometry().on('change', (evt) => {
+                    const geom = evt.target;
+                    let output;
+                    if (geom instanceof ol.geom.Polygon) {
+                        output = this.formatArea(geom);
+                        tooltipCoord = geom.getInteriorPoint().getCoordinates();
+                    } else if (geom instanceof ol.geom.LineString) {
+                        output = this.formatLength(geom);
+                        tooltipCoord = geom.getLastCoordinate();
+                    }
+                    this.measureTooltipElement.innerHTML = output;
+                    this.measureTooltip.setPosition(tooltipCoord);
+                });
+            });
+
+            this.measureDraw.on('drawend', () => {
+                this.measureTooltipElement.className = 'ol-tooltip ol-tooltip-static';
+                this.measureTooltip.setOffset([0, -7]);
+                this.measureSketch = null;
+                this.createMeasureTooltip();
+            });
+
+            window.map.addInteraction(this.measureDraw);
+        },
+
+        // 移除测量交互
+        removeMeasureInteraction() {
+            if (this.measureDraw) {
+                window.map.removeInteraction(this.measureDraw);
+                this.measureDraw = null;
+            }
+            if (this.measureTooltipElement) {
+                this.measureTooltipElement.parentNode.removeChild(this.measureTooltipElement);
+                this.measureTooltipElement = null;
+            }
+            if (this.measureTooltip) {
+                window.map.removeOverlay(this.measureTooltip);
+                this.measureTooltip = null;
+            }
+        },
+    },
+    watch: {
+        measureType(newVal) {
+            if (!newVal) {
+                this.removeMeasureInteraction();
+            }
+        }
+    }
+};
+
+// 合并测量功能到主应用
+Object.assign(app._component.data(), measureApp.data());
+Object.assign(app._component.methods, measureApp.methods);
+if (!app._component.watch) app._component.watch = {};
+Object.assign(app._component.watch, measureApp.watch);
 
 app.use(router);
 app.mount('#app');
