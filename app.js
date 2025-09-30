@@ -318,9 +318,22 @@ const YoloDetection = {
         console.log('YoloDetection mounted');
         // 监听全局截图事件
         window.addEventListener('screenshot-taken', this.handleScreenshot);
+        // 监听窗口大小变化，重新绘制检测框
+        window.addEventListener('resize', this.handleResize);
+        
+        // 使用ResizeObserver监听图片容器大小变化（包括面板调整）
+        this.setupResizeObserver();
     },
     unmounted() {
         window.removeEventListener('screenshot-taken', this.handleScreenshot);
+        window.removeEventListener('resize', this.handleResize);
+        
+        // 清理ResizeObserver
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        
         // 清理 blob URL
         if (this.objectUrl) {
             URL.revokeObjectURL(this.objectUrl);
@@ -328,6 +341,32 @@ const YoloDetection = {
         }
     },
     methods: {
+        setupResizeObserver() {
+            // 等待下一帧确保DOM已渲染
+            this.$nextTick(() => {
+                const img = this.$refs.resultImg;
+                if (img && window.ResizeObserver) {
+                    // 清理旧的observer
+                    if (this.resizeObserver) {
+                        this.resizeObserver.disconnect();
+                    }
+                    
+                    // 创建新的observer
+                    this.resizeObserver = new ResizeObserver(() => {
+                        if (this.detectionResult) {
+                            this.syncCanvas();
+                        }
+                    });
+                    this.resizeObserver.observe(img);
+                }
+            });
+        },
+        handleResize() {
+            // 当窗口大小变化时，重新调整canvas和重绘检测框
+            if (this.detectionResult) {
+                this.$nextTick(() => this.syncCanvas());
+            }
+        },
         handleScreenshot(event) {
             console.log('收到截图事件:', event.detail);
             // 清理旧的 blob URL
@@ -371,8 +410,11 @@ const YoloDetection = {
                 this.screenshotImage = null;
                 this.screenshotBlob = null;
                 
-                // 在下一帧绘制检测框
-                this.$nextTick(() => this.syncCanvas());
+                // 在下一帧绘制检测框并设置ResizeObserver
+                this.$nextTick(() => {
+                    this.syncCanvas();
+                    this.setupResizeObserver();
+                });
             } catch (error) {
                 console.error('Detection failed:', error);
                 alert('Detection failed: ' + error.message);
