@@ -1537,24 +1537,19 @@ const measureApp = {
 };
 
 // 合并测量功能到主应用
-const originalData = app._component.data;
-app._component.data = function() {
-    return {
-        ...originalData.call(this),
-        ...measureApp.data()
-    };
-};
-
+Object.assign(app._component.data(), measureApp.data());
 Object.assign(app._component.methods, measureApp.methods);
 if (!app._component.watch) app._component.watch = {};
 Object.assign(app._component.watch, measureApp.watch);
 
 // 合并 mounted 钩子
 const originalMounted = app._component.mounted;
-app._component.mounted = function() {
-    if (originalMounted) originalMounted.call(this);
-    if (measureApp.mounted) measureApp.mounted.call(this);
-};
+if (measureApp.mounted) {
+    app._component.mounted = function() {
+        if (originalMounted) originalMounted.call(this);
+        measureApp.mounted.call(this);
+    };
+}
 
 app.use(router);
 app.mount('#app');
