@@ -239,6 +239,31 @@ const TimeSeriesAnalysis = {
         if (window.map) {
             window.map.off('click', this.handleMapClick);
         }
+        
+        // 清理地图上的所有点标记
+        if (window.points && window.points.length > 0) {
+            window.points.forEach(point => {
+                if (point.marker) {
+                    window.map.removeLayer(point.marker);
+                }
+            });
+            window.points = [];
+        }
+        
+        // 清空点卡片容器
+        const container = document.getElementById('point-cards');
+        if (container) {
+            container.innerHTML = '';
+        }
+        
+        // 清空图表容器
+        const plotContainer = document.getElementById('plot-container');
+        if (plotContainer) {
+            plotContainer.innerHTML = '';
+        }
+        
+        // 重置点索引
+        window.nextPointIndex = 1;
     }
 };
 
