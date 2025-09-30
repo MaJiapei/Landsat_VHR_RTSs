@@ -4,9 +4,14 @@ export default {
             <div class="map-container">
                 <div id="map"></div>
                 <div class="map-tools">
-                    <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }">
-                        <span class="icon">📷</span>
-                        Screenshot
+                    <button
+                        @click="startScreenshot"
+                        class="tool-btn"
+                        :class="{ active: isScreenshotMode }"
+                        aria-label="Screenshot tool"
+                        title="Screenshot tool"
+                    >
+                        <span class="sr-only">Screenshot tool</span>
                     </button>
                 </div>
             </div>
