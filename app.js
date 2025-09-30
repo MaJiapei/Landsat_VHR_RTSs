@@ -1,12 +1,3 @@
-// 空白路由组件
-const EmptyRoute = {
-    template: `
-        <div class="empty-route">
-            <h3>Route 1</h3>
-            <p>This route is currently empty.</p>
-        </div>
-    `
-};
 
 // 时间序列分析组件
 const TimeSeriesAnalysis = {
@@ -14,7 +5,7 @@ const TimeSeriesAnalysis = {
         <div class="time-series-container">
             <div class="points-container">
                 <div class="points-header">
-                    <h3>Selected Points</h3>
+                <h3>Selected Points</h3>
                     <button class="clear-all-btn" @click="clearAllPoints">清除全部</button>
                 </div>
                 <div id="point-cards"></div>
@@ -33,13 +24,17 @@ const TimeSeriesAnalysis = {
             if (!window.map) return;
 
             // 清空现有点
-            if (window.points) {
-                window.points.forEach(point => {
-                    if (point.marker) {
-                        window.map.removeLayer(point.marker);
-                    }
-                });
+            if (window.pointsLayer) {
+                window.map.removeLayer(window.pointsLayer);
             }
+
+            // 创建点图层
+            const pointsSource = new ol.source.Vector();
+            window.pointsLayer = new ol.layer.Vector({
+                source: pointsSource,
+                zIndex: 1000
+            });
+            window.map.addLayer(window.pointsLayer);
 
             window.points = [];
             window.nextPointIndex = 1;
@@ -50,11 +45,16 @@ const TimeSeriesAnalysis = {
                 '#9edae5', '#393b79', '#e6550d', '#31a354', '#756bb1'
             ];
 
-            window.map.on('click', this.handleMapClick);
+            // 使用 OpenLayers 的点击事件
+            this.mapClickHandler = (evt) => this.handleMapClick(evt);
+            window.map.on('singleclick', this.mapClickHandler);
         },
         async handleMapClick(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
+            // OpenLayers 坐标转换
+            const coordinate = e.coordinate;
+            const lonLat = ol.proj.toLonLat(coordinate);
+            const lng = lonLat[0];
+            const lat = lonLat[1];
             
             try {
                 // 获取根实例来更新全局加载状态
@@ -83,20 +83,29 @@ const TimeSeriesAnalysis = {
                 
                 const pointColor = this.getNextAvailableColor();
                 const pointName = this.getNextPointName();
+                
+                // 创建 OpenLayers 点要素
+                const feature = new ol.Feature({
+                    geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat]))
+                });
+                
+                feature.setStyle(new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 8,
+                        fill: new ol.style.Fill({ color: pointColor }),
+                        stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
+                    })
+                }));
+                
+                window.pointsLayer.getSource().addFeature(feature);
+                
                 const point = {
                     id: Date.now(),
                     name: pointName,
                     lat,
                     lng,
                     color: pointColor,
-                    marker: L.circleMarker([lat, lng], {
-                        radius: 8,
-                        fillColor: pointColor,
-                        color: '#fff',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).addTo(window.map),
+                    marker: feature,
                     data: data
                 };
                 
@@ -165,7 +174,8 @@ const TimeSeriesAnalysis = {
         deletePoint(id) {
             const pointIndex = window.points.findIndex(p => p.id === id);
             if (pointIndex !== -1) {
-                window.map.removeLayer(window.points[pointIndex].marker);
+                // OpenLayers 移除要素
+                window.pointsLayer.getSource().removeFeature(window.points[pointIndex].marker);
                 window.points.splice(pointIndex, 1);
                 this.updatePointCards();
                 this.updatePlot();
@@ -173,11 +183,8 @@ const TimeSeriesAnalysis = {
         },
         clearAllPoints() {
             if (window.points && window.points.length > 0) {
-                window.points.forEach(point => {
-                    if (point.marker) {
-                        window.map.removeLayer(point.marker);
-                    }
-                });
+                // OpenLayers 清空所有要素
+                window.pointsLayer.getSource().clear();
                 window.points = [];
                 this.updatePointCards();
                 this.updatePlot();
@@ -251,17 +258,15 @@ const TimeSeriesAnalysis = {
     },
     beforeUnmount() {
         // 移除地图点击事件
-        if (window.map) {
-            window.map.off('click', this.handleMapClick);
+        if (window.map && this.mapClickHandler) {
+            window.map.un('singleclick', this.mapClickHandler);
         }
         
         // 清理地图上的所有点标记
-        if (window.points && window.points.length > 0) {
-            window.points.forEach(point => {
-                if (point.marker) {
-                    window.map.removeLayer(point.marker);
-                }
-            });
+        if (window.pointsLayer) {
+            window.pointsLayer.getSource().clear();
+        }
+        if (window.points) {
             window.points = [];
         }
         
@@ -546,13 +551,17 @@ const YoloDetection = {
     }
 };
 
+// 空路由组件（用于默认页面）
+const EmptyView = {
+    template: '<div></div>'
+};
+
 // 路由配置
 const routes = [
-    { path: '/', redirect: '/route1' },
     { 
-        path: '/route1', 
-        component: EmptyRoute,
-        name: 'route1'
+        path: '/', 
+        component: EmptyView,
+        name: 'home'
     },
     { 
         path: '/route2', 
@@ -580,12 +589,20 @@ const app = Vue.createApp({
             screenshotRect: null,
             screenshotImage: null,
             screenshotBlob: null,
-            timeseriesLoading: false
+            timeseriesLoading: false,
+            isPanelVisible: false,
+            isPanelFixed: false,
+            panelHideTimer: null
         };
     },
     watch: {
         $route(to) {
             this.currentRoute = to.path;
+            // 如果切换到首页，解除固定状态
+            if (to.path === '/') {
+                this.isPanelFixed = false;
+                this.isPanelVisible = false;
+            }
         }
     },
     mounted() {
@@ -595,6 +612,84 @@ const app = Vue.createApp({
         this.initResizablePanel();
     },
     methods: {
+        showPanel() {
+            if (this.isPanelFixed) return;
+            this.isPanelVisible = true;
+            if (this.panelHideTimer) {
+                clearTimeout(this.panelHideTimer);
+                this.panelHideTimer = null;
+            }
+        },
+        hidePanel() {
+            if (this.isPanelFixed) return;
+            this.panelHideTimer = setTimeout(() => {
+                this.isPanelVisible = false;
+            }, 300);
+        },
+        handlePanelMouseEnter() {
+            if (this.panelHideTimer) {
+                clearTimeout(this.panelHideTimer);
+                this.panelHideTimer = null;
+            }
+        },
+        handlePanelMouseLeave() {
+            this.hidePanel();
+        },
+        activateRoute(path) {
+            // 固定面板
+            this.isPanelFixed = true;
+            this.isPanelVisible = true;
+            if (this.panelHideTimer) {
+                clearTimeout(this.panelHideTimer);
+                this.panelHideTimer = null;
+            }
+            
+            // 切换路由
+            this.$router.push(path);
+            
+            // 延迟调整地图大小，等待面板完全显示
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    if (window.map) {
+                        window.map.updateSize();
+                    }
+                }, 300);
+            });
+        },
+        closePanel() {
+            // 解除固定状态
+            this.isPanelFixed = false;
+            this.isPanelVisible = false;
+            
+            // 返回首页
+            this.$router.push('/');
+            
+            // 如果在截图模式，退出截图模式
+            if (this.isScreenshotMode) {
+                this.startScreenshot(); // 切换状态以退出截图模式
+            }
+            
+            // 重置面板和地图容器的尺寸样式
+            const mapContainer = document.querySelector('.map-container');
+            const rightPanel = document.querySelector('.right-panel');
+            
+            if (mapContainer) {
+                mapContainer.style.flex = '';  // 清除 flex 设置，恢复默认
+            }
+            
+            if (rightPanel) {
+                rightPanel.style.width = '';  // 清除宽度设置，恢复 CSS 默认值 (500px)
+            }
+            
+            // 延迟调整地图大小，等待面板完全隐藏和样式重置
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    if (window.map) {
+                        window.map.updateSize();
+                    }
+                }, 300);
+            });
+        },
         initResizablePanel() {
             const container = document.querySelector('.main-layout');
             const gutter = document.querySelector('.gutter');
@@ -603,7 +698,9 @@ const app = Vue.createApp({
 
             let isResizing = false;
 
+            if (gutter) {
             gutter.addEventListener('mousedown', (e) => {
+                    if (!this.isPanelFixed) return;
                 isResizing = true;
                 document.addEventListener('mousemove', handleMouseMove);
                 document.addEventListener('mouseup', () => {
@@ -611,9 +708,10 @@ const app = Vue.createApp({
                     document.removeEventListener('mousemove', handleMouseMove);
                 });
             });
+            }
 
             const handleMouseMove = (e) => {
-                if (!isResizing) return;
+                if (!isResizing || !this.isPanelFixed) return;
 
                 const containerRect = container.getBoundingClientRect();
                 const percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
@@ -623,7 +721,9 @@ const app = Vue.createApp({
                 mapContainer.style.flex = `0 0 ${percentage}%`;
                 rightPanel.style.width = `${100 - percentage}%`;
                 
-                window.map.invalidateSize();
+                if (window.map) {
+                    window.map.updateSize();
+                }
                 
                 // 如果存在plot容器且有数据，重新调整大小
                 const plotContainer = document.getElementById('plot-container');
@@ -633,72 +733,350 @@ const app = Vue.createApp({
             }
         },
         initMap() {
-            window.map = L.map('map').setView([35.06289152, 92.74256077], 16);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles © Esri',
+            // 创建影像图层组
+            const tianditu = new ol.layer.Tile({
+                title: '天地图影像',
+                type: 'base',
+                visible: false,
+                source: new ol.source.XYZ({
+                    url: 'https://t{0-7}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TileMatrix={z}&TileCol={x}&TileRow={y}&tk=76272abff72b48bbe6768915c647f48b',
                 crossOrigin: 'anonymous'
-            }).addTo(window.map);
+                })
+            });
+
+            const googleSat = new ol.layer.Tile({
+                title: 'Google 卫星',
+                type: 'base',
+                visible: false,
+                source: new ol.source.XYZ({
+                    url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                    crossOrigin: 'anonymous'
+                })
+            });
+
+            const esriImagery = new ol.layer.Tile({
+                title: 'ESRI 影像',
+                type: 'base',
+                visible: true,
+                source: new ol.source.XYZ({
+                    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    crossOrigin: 'anonymous'
+                })
+            });
+
+            // 创建 RTS 图层
+            let predictedRTSLayer = null;
+            let xiadataRTSLayer = null;
+
+            if (typeof json_PredictedRTS !== 'undefined' && json_PredictedRTS.features && json_PredictedRTS.features.length > 0) {
+                const predictedSource = new ol.source.Vector({
+                    features: new ol.format.GeoJSON().readFeatures(json_PredictedRTS, {
+                        featureProjection: 'EPSG:3857'
+                    })
+                });
+
+                predictedRTSLayer = new ol.layer.Vector({
+                    title: 'Predicted RTS',
+                    source: predictedSource,
+                    style: new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: 'rgba(229,90,35,1.0)',
+                            width: 2
+                        }),
+                        fill: new ol.style.Fill({
+                            color: 'rgba(196,60,57,0.3)'
+                        })
+                    }),
+                    visible: true
+                });
+            }
+
+            if (typeof json_XiadataRTS !== 'undefined' && json_XiadataRTS.features && json_XiadataRTS.features.length > 0) {
+                const xiadataSource = new ol.source.Vector({
+                    features: new ol.format.GeoJSON().readFeatures(json_XiadataRTS, {
+                        featureProjection: 'EPSG:3857'
+                    })
+                });
+
+                xiadataRTSLayer = new ol.layer.Vector({
+                    title: 'Xia RTS 2022',
+                    source: xiadataSource,
+                    style: new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: 'rgba(205,186,35,1.0)',
+                            width: 2
+                        }),
+                        fill: new ol.style.Fill({
+                            color: 'rgba(225,89,137,0.3)'
+                        })
+                    }),
+                    visible: true
+                });
+            }
+
+            // 创建图层数组
+            const layers = [tianditu, googleSat, esriImagery];
+            if (xiadataRTSLayer) layers.push(xiadataRTSLayer);
+            if (predictedRTSLayer) layers.push(predictedRTSLayer);
+
+            // 创建地图
+            window.map = new ol.Map({
+                target: 'map',
+                layers: layers,
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([92.74256077, 35.06289152]),
+                    zoom: 16,
+                    maxZoom: 21,
+                    minZoom: 1
+                })
+            });
+
+            // 添加图层切换控件（右下角，可折叠）
+            const layerSwitcherContainer = document.createElement('div');
+            layerSwitcherContainer.className = 'ol-layer-switcher-container';
+            layerSwitcherContainer.style.cssText = 'position: absolute; bottom: 30px; right: 10px; z-index: 1000;';
+            
+            // 折叠/展开按钮
+            const toggleButton = document.createElement('button');
+            toggleButton.className = 'layer-switcher-toggle';
+            toggleButton.innerHTML = '<i class="fas fa-layer-group"></i>';
+            toggleButton.title = 'Layer Control';
+            toggleButton.style.cssText = 'background: rgba(255,255,255,0.9); border: none; width: 40px; height: 40px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; font-size: 16px; color: #333; display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
+            
+            // 图层面板
+            const layerSwitcher = document.createElement('div');
+            layerSwitcher.className = 'ol-layer-switcher-panel';
+            layerSwitcher.style.cssText = 'background: rgba(255,255,255,0.95); padding: 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: 400px; overflow-y: auto; margin-bottom: 8px; display: none; min-width: 200px;';
+            
+            // 标题栏
+            const layerHeader = document.createElement('div');
+            layerHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #ddd;';
+            
+            const layerTitle = document.createElement('div');
+            layerTitle.textContent = 'Layer Control';
+            layerTitle.style.cssText = 'font-weight: bold; font-size: 14px; color: #333;';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.style.cssText = 'background: none; border: none; font-size: 20px; cursor: pointer; color: #666; padding: 0; width: 20px; height: 20px; line-height: 1;';
+            closeBtn.title = 'Close';
+            
+            layerHeader.appendChild(layerTitle);
+            layerHeader.appendChild(closeBtn);
+            layerSwitcher.appendChild(layerHeader);
+
+            // 底图选择
+            const baseLayerDiv = document.createElement('div');
+            baseLayerDiv.style.marginBottom = '12px';
+            
+            const baseTitle = document.createElement('div');
+            baseTitle.textContent = 'Base Maps:';
+            baseTitle.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 6px; font-weight: 600;';
+            baseLayerDiv.appendChild(baseTitle);
+            
+            const baseLayerNames = {
+                '天地图影像': 'Tianditu',
+                'Google 卫星': 'Google Satellite',
+                'ESRI 影像': 'ESRI Imagery'
+            };
+            
+            [tianditu, googleSat, esriImagery].forEach(layer => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display: flex; align-items: center; font-size: 12px; margin: 4px 0; cursor: pointer; padding: 2px 0;';
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'baselayer';
+                input.checked = layer.getVisible();
+                input.style.cssText = 'margin-right: 6px;';
+                input.addEventListener('change', () => {
+                    [tianditu, googleSat, esriImagery].forEach(l => l.setVisible(false));
+                    layer.setVisible(true);
+                });
+                label.appendChild(input);
+                const layerName = baseLayerNames[layer.get('title')] || layer.get('title');
+                label.appendChild(document.createTextNode(layerName));
+                baseLayerDiv.appendChild(label);
+            });
+            layerSwitcher.appendChild(baseLayerDiv);
+
+            // 数据图层选择
+            if (predictedRTSLayer || xiadataRTSLayer) {
+                const dataLayerDiv = document.createElement('div');
+                
+                const dataTitle = document.createElement('div');
+                dataTitle.textContent = 'Data Layers:';
+                dataTitle.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 6px; font-weight: 600;';
+                dataLayerDiv.appendChild(dataTitle);
+                
+                [predictedRTSLayer, xiadataRTSLayer].filter(l => l).forEach(layer => {
+                    const label = document.createElement('label');
+                    label.style.cssText = 'display: flex; align-items: center; font-size: 12px; margin: 4px 0; cursor: pointer; padding: 2px 0;';
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = layer.getVisible();
+                    input.style.cssText = 'margin-right: 6px;';
+                    input.addEventListener('change', (e) => {
+                        layer.setVisible(e.target.checked);
+                    });
+                    label.appendChild(input);
+                    label.appendChild(document.createTextNode(layer.get('title')));
+                    dataLayerDiv.appendChild(label);
+                });
+                layerSwitcher.appendChild(dataLayerDiv);
+            }
+
+            // 切换显示/隐藏
+            let isExpanded = false;
+            toggleButton.addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                layerSwitcher.style.display = isExpanded ? 'block' : 'none';
+                toggleButton.style.background = isExpanded ? 'rgba(76, 175, 80, 0.9)' : 'rgba(255,255,255,0.9)';
+                toggleButton.style.color = isExpanded ? '#fff' : '#333';
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                isExpanded = false;
+                layerSwitcher.style.display = 'none';
+                toggleButton.style.background = 'rgba(255,255,255,0.9)';
+                toggleButton.style.color = '#333';
+            });
+
+            layerSwitcherContainer.appendChild(layerSwitcher);
+            layerSwitcherContainer.appendChild(toggleButton);
+            document.getElementById('map').appendChild(layerSwitcherContainer);
+
+            // 保存图层引用
+            window.mapLayers = {
+                predicted: predictedRTSLayer,
+                xiadata: xiadataRTSLayer
+            };
         },
         startScreenshot() {
             this.isScreenshotMode = !this.isScreenshotMode;
             
             if (this.isScreenshotMode) {
-                // 启用截图模式
-                window.map.dragging.disable();
-                window.map.on('mousedown', this.onMapMouseDown);
+                // 启用截图模式 - OpenLayers
+                const mapElement = window.map.getTargetElement();
+                mapElement.style.cursor = 'crosshair';
+                mapElement.addEventListener('mousedown', this.onMapMouseDown);
+                
+                // 禁用地图交互（拖拽、缩放等）
+                window.map.getInteractions().forEach(interaction => {
+                    if (interaction instanceof ol.interaction.DragPan || 
+                        interaction instanceof ol.interaction.MouseWheelZoom ||
+                        interaction instanceof ol.interaction.DoubleClickZoom ||
+                        interaction instanceof ol.interaction.DragZoom) {
+                        interaction._wasActive = interaction.getActive();
+                        interaction.setActive(false);
+                    }
+                });
+                
+                // 隐藏 RTS 图层
+                if (window.mapLayers) {
+                    if (window.mapLayers.predicted) {
+                        window.mapLayers.predicted._visibleBeforeScreenshot = window.mapLayers.predicted.getVisible();
+                        window.mapLayers.predicted.setVisible(false);
+                    }
+                    if (window.mapLayers.xiadata) {
+                        window.mapLayers.xiadata._visibleBeforeScreenshot = window.mapLayers.xiadata.getVisible();
+                        window.mapLayers.xiadata.setVisible(false);
+                    }
+                }
             } else {
                 // 禁用截图模式
-                window.map.dragging.enable();
-                window.map.off('mousedown', this.onMapMouseDown);
-                if (this.screenshotRect) {
-                    window.map.removeLayer(this.screenshotRect);
-                    this.screenshotRect = null;
+                const mapElement = window.map.getTargetElement();
+                mapElement.style.cursor = '';
+                mapElement.removeEventListener('mousedown', this.onMapMouseDown);
+                if (this.screenshotOverlay) {
+                    window.map.removeOverlay(this.screenshotOverlay);
+                    this.screenshotOverlay = null;
+                }
+                
+                // 恢复地图交互和图层
+                this.restoreMapInteractions();
+            }
+        },
+        restoreMapInteractions() {
+            // 恢复地图交互
+            window.map.getInteractions().forEach(interaction => {
+                if (interaction._wasActive !== undefined) {
+                    interaction.setActive(interaction._wasActive);
+                    delete interaction._wasActive;
+                }
+            });
+            
+            // 恢复 RTS 图层的可见性
+            if (window.mapLayers) {
+                if (window.mapLayers.predicted && window.mapLayers.predicted._visibleBeforeScreenshot !== undefined) {
+                    window.mapLayers.predicted.setVisible(window.mapLayers.predicted._visibleBeforeScreenshot);
+                    delete window.mapLayers.predicted._visibleBeforeScreenshot;
+                }
+                if (window.mapLayers.xiadata && window.mapLayers.xiadata._visibleBeforeScreenshot !== undefined) {
+                    window.mapLayers.xiadata.setVisible(window.mapLayers.xiadata._visibleBeforeScreenshot);
+                    delete window.mapLayers.xiadata._visibleBeforeScreenshot;
                 }
             }
         },
         onMapMouseDown(e) {
-            if (!this.isScreenshotMode) return;
+            const app = this;
+            if (!app.$data.isScreenshotMode) return;
 
-            const startPoint = e.containerPoint;
-            let rect = null;
+            e.preventDefault();
+            const mapElement = window.map.getTargetElement();
+            const startPixel = [e.offsetX, e.offsetY];
+            let overlayElement = null;
 
-            const onMouseMove = (e) => {
-                if (rect) {
-                    window.map.removeLayer(rect);
+            const onMouseMove = (moveEvent) => {
+                if (overlayElement) {
+                    overlayElement.remove();
                 }
 
-                const endPoint = e.containerPoint;
-                const bounds = L.bounds(startPoint, endPoint);
-                
-                const southWest = window.map.containerPointToLatLng(bounds.min);
-                const northEast = window.map.containerPointToLatLng(bounds.max);
-                
-                rect = L.rectangle(L.latLngBounds(southWest, northEast), {
-                    color: '#0088ff',
-                    weight: 2,
-                    fillOpacity: 0.1
-                }).addTo(window.map);
+                const endPixel = [moveEvent.offsetX, moveEvent.offsetY];
+                const minX = Math.min(startPixel[0], endPixel[0]);
+                const minY = Math.min(startPixel[1], endPixel[1]);
+                const maxX = Math.max(startPixel[0], endPixel[0]);
+                const maxY = Math.max(startPixel[1], endPixel[1]);
+
+                overlayElement = document.createElement('div');
+                overlayElement.style.cssText = `
+                    position: absolute;
+                    left: ${minX}px;
+                    top: ${minY}px;
+                    width: ${maxX - minX}px;
+                    height: ${maxY - minY}px;
+                    border: 2px solid #0088ff;
+                    background: rgba(0, 136, 255, 0.1);
+                    pointer-events: none;
+                    z-index: 1000;
+                `;
+                mapElement.appendChild(overlayElement);
             };
 
-            const onMouseUp = async (e) => {
-                window.map.off('mousemove', onMouseMove);
-                window.map.off('mouseup', onMouseUp);
+            const onMouseUp = async (upEvent) => {
+                mapElement.removeEventListener('mousemove', onMouseMove);
+                mapElement.removeEventListener('mouseup', onMouseUp);
+                mapElement.style.cursor = '';
                 
-                if (rect) {
-                    // 在截图前移除矩形，避免被截图捕获
-                    const selectedBounds = rect.getBounds();
-                    try { window.map.removeLayer(rect); } catch (err) {}
-                    this.screenshotRect = null;
-                    await this.captureAndDetect(selectedBounds);
+                if (overlayElement) {
+                    const endPixel = [upEvent.offsetX, upEvent.offsetY];
+                    const minX = Math.min(startPixel[0], endPixel[0]);
+                    const minY = Math.min(startPixel[1], endPixel[1]);
+                    const maxX = Math.max(startPixel[0], endPixel[0]);
+                    const maxY = Math.max(startPixel[1], endPixel[1]);
+
+                    overlayElement.remove();
+                    await app.captureAndDetect({ minX, minY, maxX, maxY });
                 }
                 
-                this.isScreenshotMode = false;
-                window.map.dragging.enable();
+                // 截图完成后，自动退出截图模式
+                app.$data.isScreenshotMode = false;
+                
+                // 恢复地图交互功能
+                app.restoreMapInteractions();
             };
 
-            window.map.on('mousemove', onMouseMove);
-            window.map.on('mouseup', onMouseUp);
+            mapElement.addEventListener('mousemove', onMouseMove);
+            mapElement.addEventListener('mouseup', onMouseUp);
         },
         async captureAndDetect(bounds) {
             try {
@@ -714,19 +1092,14 @@ const app = Vue.createApp({
                     backgroundColor: null
                 });
 
-                // 计算所选矩形在容器中的像素范围
-                const sw = bounds.getSouthWest();
-                const ne = bounds.getNorthEast();
-                const p1 = window.map.latLngToContainerPoint(sw);
-                const p2 = window.map.latLngToContainerPoint(ne);
-
-                const x = Math.min(p1.x, p2.x);
-                const y = Math.min(p1.y, p2.y);
-                const w = Math.abs(p2.x - p1.x);
-                const h = Math.abs(p2.y - p1.y);
+                // 使用像素范围裁剪
+                const x = bounds.minX;
+                const y = bounds.minY;
+                const w = bounds.maxX - bounds.minX;
+                const h = bounds.maxY - bounds.minY;
 
                 if (w < 10 || h < 10) {
-                    alert('截图范围太小，请选择更大的区域');
+                    alert('Selected area is too small. Please select a larger area for detection.');
                     return;
                 }
 
@@ -741,7 +1114,7 @@ const app = Vue.createApp({
 
                 // 确保缩放后的尺寸有效（至少10x10像素）
                 if (swidth < 10 || sheight < 10) {
-                    alert('截图区域太小（缩放后尺寸不足），请选择更大的区域');
+                    alert('Selected area is too small after scaling. Please select a larger area for detection.');
                     return;
                 }
 

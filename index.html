@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RTS Analysis System</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- OpenLayers CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://unpkg.com/vue@3.3.4/dist/vue.global.js"></script>
     <script src="https://unpkg.com/vue-router@4.2.4/dist/vue-router.global.js"></script>
@@ -28,25 +30,66 @@
                     </div>
                 </div>
             </div>
-            <div class="gutter"></div>
-            <div class="right-panel">
-                <div class="route-tabs">
-                    <router-link to="/route1" class="route-tab">RTS Show</router-link>
-                    <router-link to="/route2" class="route-tab">Timeseries Analysis</router-link>
-                    <router-link to="/route3" class="route-tab">Yolo Object Detection</router-link>
+            <div class="gutter" v-show="isPanelFixed"></div>
+            <div 
+                class="right-panel" 
+                :class="{ 'panel-hidden': !isPanelVisible, 'panel-fixed': isPanelFixed }"
+                @mouseenter="handlePanelMouseEnter"
+                @mouseleave="handlePanelMouseLeave"
+            >
+                <div class="panel-header">
+                    <div class="route-tabs">
+                        <a href="javascript:void(0)" 
+                           class="route-tab" 
+                           :class="{ 'router-link-active': currentRoute === '/route2' && isPanelFixed }"
+                           @click="activateRoute('/route2')">
+                            Timeseries Analysis
+                        </a>
+                        <a href="javascript:void(0)" 
+                           class="route-tab" 
+                           :class="{ 'router-link-active': currentRoute === '/route3' && isPanelFixed }"
+                           @click="activateRoute('/route3')">
+                            Yolo Object Detection
+                        </a>
+                    </div>
+                    <button 
+                        v-if="isPanelFixed" 
+                        class="panel-close-btn" 
+                        @click="closePanel"
+                        title="Close panel">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div class="content-panel">
+                <div class="content-panel" v-if="isPanelFixed">
                     <router-view v-slot="{ Component }">
                         <component :is="Component" />
                     </router-view>
                 </div>
+                <div class="content-panel content-panel-hint" v-else>
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; text-align: center; padding: 20px;">
+                        <div>
+                            <i class="fas fa-hand-pointer" style="font-size: 48px; margin-bottom: 16px; color: #999;"></i>
+                            <p style="font-size: 16px; margin: 0;">Click a tab above to start analysis</p>
+                        </div>
+                    </div>
+                </div>
             </div>
+            <!-- 右侧边缘触发区 -->
+            <div 
+                class="panel-trigger" 
+                v-show="!isPanelFixed"
+                @mouseenter="showPanel"
+            ></div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- OpenLayers JS -->
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- GeoJSON 数据 -->
+    <script src="layers/PredictedRTS.js"></script>
+    <script src="layers/XiadataRTS.js"></script>
     <script>
         // 全局事件总线
         window.eventBus = {
