@@ -70,7 +70,7 @@ map.on('click', async function(e) {
     const lng = e.latlng.lng;
     
     try {
-        const response = await fetch('http://localhost:8000/api/analyze', {
+        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

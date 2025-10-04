@@ -72,7 +72,7 @@ const TimeSeriesAnalysis = {
                 if (root.timeseriesLoading !== undefined) {
                     root.timeseriesLoading = true;
                 }
-                const response = await fetch('http://localhost:8000/api/analyze', {
+                const response = await fetch(`${API_BASE_URL}/api/analyze`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -458,7 +458,7 @@ const YoloDetection = {
                 formData.append('file', this.screenshotBlob, 'screenshot.png');
 
                 // 发送到后端进行检测
-                const response = await fetch('http://localhost:8000/api/yolo/predict', {
+                const response = await fetch(`${API_BASE_URL}/api/yolo/predict`, {
                     method: 'POST',
                     body: formData
                 });
