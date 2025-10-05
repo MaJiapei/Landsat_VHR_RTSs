@@ -581,15 +581,24 @@ const routes = [
         component: EmptyView,
         name: 'home'
     },
+    // 兼容旧路径：重定向到新路径
     { 
-        path: '/route2', 
-        component: TimeSeriesAnalysis,
-        name: 'route2'
+        path: '/route2',
+        redirect: '/tsa'
     },
     { 
-        path: '/route3', 
+        path: '/route3',
+        redirect: '/yolod'
+    },
+    { 
+        path: '/tsa', 
+        component: TimeSeriesAnalysis,
+        name: 'tsa'
+    },
+    { 
+        path: '/yolod', 
         component: YoloDetection,
-        name: 'route3'
+        name: 'yolod'
     }
 ];
 
