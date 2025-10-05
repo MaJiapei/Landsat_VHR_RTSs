@@ -992,6 +992,36 @@ const app = Vue.createApp({
                 predicted: predictedRTSLayer,
                 xiadata: xiadataRTSLayer
             };
+
+            // 添加鼠标位置显示控件（右下角）
+            const mousePositionContainer = document.createElement('div');
+            mousePositionContainer.className = 'ol-mouse-position-container';
+            mousePositionContainer.style.cssText = 'position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 6px 12px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 13px; color: #333; font-family: monospace; pointer-events: none; display: none;';
+            
+            const mousePositionLabel = document.createElement('span');
+            mousePositionLabel.textContent = 'Lon: ---, Lat: ---';
+            mousePositionContainer.appendChild(mousePositionLabel);
+            
+            document.getElementById('map').appendChild(mousePositionContainer);
+            
+            // 监听鼠标移动事件，更新经纬度显示
+            window.map.on('pointermove', (evt) => {
+                if (evt.dragging) {
+                    return;
+                }
+                const coordinate = evt.coordinate;
+                const lonLat = ol.proj.toLonLat(coordinate);
+                const lon = lonLat[0].toFixed(4);
+                const lat = lonLat[1].toFixed(4);
+                mousePositionLabel.textContent = `Lon: ${lon}, Lat: ${lat}`;
+                mousePositionContainer.style.display = 'block';
+            });
+            
+            // 监听鼠标离开地图区域，隐藏控件
+            const mapElement = document.getElementById('map');
+            mapElement.addEventListener('mouseleave', () => {
+                mousePositionContainer.style.display = 'none';
+            });
         },
         startScreenshot() {
             this.isScreenshotMode = !this.isScreenshotMode;
