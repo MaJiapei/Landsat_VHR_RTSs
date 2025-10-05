@@ -38,8 +38,8 @@
                         <i class="fas fa-draw-polygon"></i>
                     </button>
                 </div>
-                <div v-if="currentRoute === '/yolod'" class="map-tools">
-                    <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }">
+                <div v-if="currentRoute === '/yolod' && (isPanelVisible || isPanelFixed)" class="map-tools">
+                    <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }" title="Screenshot">
                         <span class="icon">📷</span>
                         Screenshot
                     </button>
@@ -54,7 +54,7 @@
             </div>
             <div class="gutter" v-show="isPanelFixed"></div>
             <div 
-                class="right-panel" 
+                class="right-panel" v-cloak 
                 :class="{ 'panel-hidden': !isPanelVisible, 'panel-fixed': isPanelFixed }"
                 @mouseenter="handlePanelMouseEnter"
                 @mouseleave="handlePanelMouseLeave"

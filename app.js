@@ -619,7 +619,10 @@ const app = Vue.createApp({
             timeseriesLoading: false,
             isPanelVisible: false,
             isPanelFixed: false,
-            panelHideTimer: null
+            panelHideTimer: null,
+            // 为模板使用的字段提供初始值，防止未定义并确保测量交互可用
+            measureType: null,
+            searchCoordinates: ''
         };
     },
     watch: {
@@ -1587,10 +1590,9 @@ const measureApp = {
 };
 
 // 合并测量功能到主应用
-Object.assign(app._component.data(), measureApp.data());
-Object.assign(app._component.methods, measureApp.methods);
-if (!app._component.watch) app._component.watch = {};
-Object.assign(app._component.watch, measureApp.watch);
+// 仅合并 methods / watch，避免重写 data 函数导致实例未正确挂载交互
+app._component.methods = Object.assign({}, app._component.methods || {}, measureApp.methods || {});
+app._component.watch = Object.assign({}, app._component.watch || {}, measureApp.watch || {});
 
 // 合并 mounted 钩子
 const originalMounted = app._component.mounted;
