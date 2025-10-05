@@ -6,26 +6,28 @@
 const API_CONFIG = {
     // 开发环境（本地测试）
     development: {
-        baseURL: 'http://192.168.10.116:8000',
+        baseURL: 'https://192.168.10.116',
         description: '本地开发环境'
     },
     // 生产环境（GitHub Pages + 内网穿透）
     production: {
-        baseURL: 'http://45.64.112.55:9000',  // ⚠️ 替换为你的内网穿透公网地址
+        baseURL: 'https://45.64.112.55',  // ✅ HTTPS 访问地址（nginx 反向代理）
         // 如果使用API密钥认证，在这里配置：
         // apiKey: 'your-secret-api-key',
-        description: 'GitHub Pages生产环境'
+        description: 'GitHub Pages生产环境 (HTTPS)'
     }
 };
 
 /**
  * 自动检测当前运行环境
- * - localhost/127.0.0.1 → 开发环境
- * - GitHub Pages域名 → 生产环境
+ * - localhost/127.0.0.1/192.168.* → 开发环境
+ * - GitHub Pages域名或其他公网地址 → 生产环境
  */
-const ENV = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'development'
-    : 'production';
+const ENV = (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname.startsWith('192.168.')
+) ? 'development' : 'production';
 
 /**
  * 当前环境的API基础URL
