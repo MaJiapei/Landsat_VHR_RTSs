@@ -353,7 +353,7 @@ const YoloDetection = {
                     </div>
                     <div class="detections-list">
                         <h4>Detected Objects</h4>
-                        <div class="detection-item" v-for="(det, index) in detectionResult.detections" :key="index">
+                        <div class="detection-item" v-for="(det, index) in detectionResult.detections" :key="index" @mouseenter="onHoverEnter(index)" @mouseleave="onHoverLeave">
                             <div class="detection-header">
                                 <span class="detection-label">{{det.label}}</span>
                                 <span class="detection-confidence">{{(det.confidence * 100).toFixed(1)}}%</span>
@@ -374,7 +374,8 @@ const YoloDetection = {
             screenshotImage: null,
             screenshotBlob: null,
             originalImage: null,
-            objectUrl: null
+            objectUrl: null,
+            hoveredIndex: null
         };
     },
     mounted() {
@@ -511,33 +512,59 @@ const YoloDetection = {
             const scaleX = canvas.width / img.naturalWidth;
             const scaleY = canvas.height / img.naturalHeight;
 
-            for (const d of this.detectionResult.detections || []) {
+            const detections = this.detectionResult.detections || [];
+
+            const drawOne = (d, highlight) => {
                 const [x1, y1, x2, y2] = d.bbox;
                 const x = x1 * scaleX;
                 const y = y1 * scaleY;
                 const w = (x2 - x1) * scaleX;
                 const h = (y2 - y1) * scaleY;
-                
-                // 绘制边界框
-                ctx.strokeStyle = '#00ff00';  // 绿色
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x, y, w, h);
-                
-                // 绘制标签
+
                 const label = `${d.label} ${(d.confidence * 100).toFixed(1)}%`;
+
+                // 框
+                ctx.save();
+                if (highlight) {
+                    ctx.strokeStyle = '#ffcc00';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = 'rgba(255, 204, 0, 0.8)';
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.strokeStyle = 'rgba(248, 248, 248, 0.8)';
+                    ctx.lineWidth = 2;
+                }
+                ctx.strokeRect(x, y, w, h);
+                ctx.restore();
+
+                // 标签
+                ctx.save();
                 ctx.font = 'bold 14px Arial';
                 ctx.textBaseline = 'top';
                 const textW = ctx.measureText(label).width + 8;
                 const textH = 20;
-                
-                // 标签背景
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+                ctx.fillStyle = highlight ? 'rgba(255, 204, 0, 0.9)' : 'rgba(255, 255, 255, 0.8)';
                 ctx.fillRect(x, Math.max(0, y - textH - 2), textW, textH);
-                
-                // 标签文字
                 ctx.fillStyle = '#000';
                 ctx.fillText(label, x + 4, Math.max(2, y - textH));
+                ctx.restore();
+            };
+
+            const hovered = this.hoveredIndex;
+            detections.forEach((d, i) => {
+                if (i !== hovered) drawOne(d, false);
+            });
+            if (hovered != null && hovered >= 0 && hovered < detections.length) {
+                drawOne(detections[hovered], true);
             }
+        },
+        onHoverEnter(index) {
+            this.hoveredIndex = index;
+            this.drawDetections();
+        },
+        onHoverLeave() {
+            this.hoveredIndex = null;
+            this.drawDetections();
         },
         clearScreenshot() {
             this.screenshotImage = null;
