@@ -11,7 +11,7 @@ const API_CONFIG = {
     },
     // 生产环境（GitHub Pages + 内网穿透）
     production: {
-        baseURL: 'https://45.64.112.55',  // ✅ HTTPS 访问地址（nginx 反向代理）
+        baseURL: 'https://woqv.abrdns.com',  // ✅ HTTPS 访问地址（nginx 反向代理）
         // 如果使用API密钥认证，在这里配置：
         // apiKey: 'your-secret-api-key',
         description: 'GitHub Pages生产环境 (HTTPS)'
