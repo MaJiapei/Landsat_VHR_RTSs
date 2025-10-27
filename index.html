@@ -38,6 +38,12 @@
                         <i class="fas fa-draw-polygon"></i>
                     </button>
                 </div>
+                <!-- 帮助工具 -->
+                <div class="help-tool">
+                    <button @click="openHelp" class="help-btn" title="Help">
+                        <i class="fas fa-circle-question"></i>
+                    </button>
+                </div>
                 <div v-if="currentRoute === '/yolod' && (isPanelVisible || isPanelFixed)" class="map-tools">
                     <button @click="startScreenshot" class="tool-btn" :class="{ active: isScreenshotMode }" title="Screenshot">
                         <span class="icon">📷</span>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>帮助 - 使用说明</title>
+    <style>
+        html, body { height: 100%; margin: 0; }
+        body { background: #f4f6f8; }
+        .viewer-frame {
+            position: fixed;
+            inset: 0;
+            border: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+        }
+        .fallback {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            color: #333;
+            pointer-events: none; /* 避免阻挡滚动/点击 */
+        }
+        .fallback a { color: #1976d2; text-decoration: none; }
+        .fallback a:hover { text-decoration: underline; }
+    </style>
+    <script>
+        // 设置 PDF 源，确保空格等字符被正确编码
+        document.addEventListener('DOMContentLoaded', function () {
+            var pdfPath = 'resources/Web application usage instructions.pdf';
+            var frame = document.getElementById('pdfFrame');
+            var encoded = encodeURI(pdfPath) + '#toolbar=1&navpanes=0&statusbar=1&view=FitH';
+            frame.src = encoded;
+
+            // iframe 加载成功后隐藏备用层，避免遮挡滚动
+            var fallback = document.getElementById('fallback');
+            frame.addEventListener('load', function(){
+                if (fallback) fallback.style.display = 'none';
+            });
+        });
+    </script>
+    </head>
+<body>
+    <iframe id="pdfFrame" class="viewer-frame" title="使用说明 PDF"></iframe>
+    <div id="fallback" class="fallback">
+        如果 PDF 未正常显示，请
+        <a id="pdfLink" href="resources/Web application usage instructions.pdf" target="_blank" style="margin-left:6px;">点击这里打开</a>
+    </div>
+    <script>
+        // 同步后备链接的编码地址
+        (function(){
+            var link = document.getElementById('pdfLink');
+            link.href = encodeURI('resources/Web application usage instructions.pdf');
+        })();
+    </script>
+</body>
+</html>
+
+

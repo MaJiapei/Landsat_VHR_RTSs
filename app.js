@@ -1449,6 +1449,11 @@ const measureApp = {
             }
         },
 
+        // 打开帮助文档（新页面内嵌渲染）
+        openHelp() {
+            window.open('help.html', '_blank');
+        },
+
         // 位置搜索功能
         searchLocation() {
             const coords = this.searchCoordinates.trim();
