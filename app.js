@@ -845,7 +845,7 @@ const app = Vue.createApp({
                 });
 
                 predictedRTSLayer = new ol.layer.Vector({
-                    title: 'Predicted RTS',
+                    title: 'Predicted RTSs',
                     source: predictedSource,
                     style: new ol.style.Style({
                         stroke: new ol.style.Stroke({
@@ -868,7 +868,7 @@ const app = Vue.createApp({
                 });
 
                 xiadataRTSLayer = new ol.layer.Vector({
-                    title: 'Xia RTS 2022',
+                    title: 'DL-based RTSs',
                     source: xiadataSource,
                     style: new ol.style.Style({
                         stroke: new ol.style.Stroke({
@@ -999,7 +999,13 @@ const app = Vue.createApp({
                     left.appendChild(input);
 
                     const titleSpan = document.createElement('span');
-                    titleSpan.textContent = layer.get('title');
+                    const titleText = layer.get('title');
+                    if (titleText === 'DL-based RTSs') {
+                        // render citation on the next line as a small linked caption
+                        titleSpan.innerHTML = 'DL-based RTSs<br><small style="font-size:11px;color:#06c"><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024GL109616" target="_blank" rel="noopener noreferrer">(Xia et al., 2024)</a></small>';
+                    } else {
+                        titleSpan.textContent = titleText;
+                    }
                     titleSpan.style.cssText = 'flex: 1;';
                     left.appendChild(titleSpan);
 
