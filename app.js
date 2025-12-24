@@ -911,11 +911,14 @@ const app = Vue.createApp({
             toggleButton.innerHTML = '<i class="fas fa-layer-group"></i>';
             toggleButton.title = 'Layer Control';
             toggleButton.style.cssText = 'background: rgba(255,255,255,0.9); border: none; width: 40px; height: 40px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; font-size: 16px; color: #333; display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
+            // 默认展开时的显示效果
+            toggleButton.style.background = 'rgba(76, 175, 80, 0.9)';
+            toggleButton.style.color = '#fff';
             
             // 图层面板
             const layerSwitcher = document.createElement('div');
             layerSwitcher.className = 'ol-layer-switcher-panel';
-            layerSwitcher.style.cssText = 'background: rgba(255,255,255,0.95); padding: 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: 400px; overflow-y: auto; margin-bottom: 8px; display: none; min-width: 200px; position: absolute; bottom: 48px; left: 0;';
+            layerSwitcher.style.cssText = 'background: rgba(255,255,255,0.95); padding: 12px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-height: 400px; overflow-y: auto; margin-bottom: 8px; display: block; min-width: 200px; position: absolute; bottom: 48px; left: 0;';
             
             // 标题栏
             const layerHeader = document.createElement('div');
@@ -979,23 +982,70 @@ const app = Vue.createApp({
                 
                 [predictedRTSLayer, xiadataRTSLayer].filter(l => l).forEach(layer => {
                     const label = document.createElement('label');
-                    label.style.cssText = 'display: flex; align-items: center; font-size: 12px; margin: 4px 0; cursor: pointer; padding: 2px 0;';
+                    // 使用 space-between 使颜色条始终靠右，宽度一致
+                    label.style.cssText = 'display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin: 4px 0; cursor: pointer; padding: 2px 0; width: 100%;';
+
+                    // 左侧：复选框 + 标题
+                    const left = document.createElement('div');
+                    left.style.cssText = 'display:flex; align-items:center; gap:8px;';
+
                     const input = document.createElement('input');
                     input.type = 'checkbox';
                     input.checked = layer.getVisible();
-                    input.style.cssText = 'margin-right: 6px;';
+                    input.style.cssText = 'margin-right: 0;';
                     input.addEventListener('change', (e) => {
                         layer.setVisible(e.target.checked);
                     });
-                    label.appendChild(input);
-                    label.appendChild(document.createTextNode(layer.get('title')));
+                    left.appendChild(input);
+
+                    const titleSpan = document.createElement('span');
+                    titleSpan.textContent = layer.get('title');
+                    titleSpan.style.cssText = 'flex: 1;';
+                    left.appendChild(titleSpan);
+
+                    label.appendChild(left);
+
+                    // 尝试从 layer 的 style 中获取描边颜色（回退到填充色或默认颜色）
+                    let indicatorColor = '#000';
+                    try {
+                        const styleObj = layer.getStyle && layer.getStyle();
+                        if (styleObj) {
+                            let stroke = null;
+                            if (typeof styleObj === 'function') {
+                                try {
+                                    const s = styleObj();
+                                    stroke = s && s.getStroke && s.getStroke();
+                                } catch (err) {
+                                    stroke = null;
+                                }
+                            } else {
+                                stroke = styleObj.getStroke && styleObj.getStroke();
+                            }
+                            if (stroke && stroke.getColor) {
+                                indicatorColor = stroke.getColor();
+                            } else {
+                                const fill = styleObj.getFill && styleObj.getFill();
+                                if (fill && fill.getColor) {
+                                    indicatorColor = fill.getColor();
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        // 忽略错误，使用默认颜色
+                    }
+
+                    // 右侧：固定宽度颜色条（确保所有条长度一致并靠右显示）
+                    const colorBar = document.createElement('span');
+                    colorBar.style.cssText = 'display:inline-block; height:4px; width:48px; margin-left:12px; vertical-align: middle; background: ' + indicatorColor + '; border-radius: 2px; flex: 0 0 48px;';
+                    label.appendChild(colorBar);
+
                     dataLayerDiv.appendChild(label);
                 });
                 layerSwitcher.appendChild(dataLayerDiv);
             }
 
             // 切换显示/隐藏
-            let isExpanded = false;
+            let isExpanded = true;
             toggleButton.addEventListener('click', () => {
                 isExpanded = !isExpanded;
                 layerSwitcher.style.display = isExpanded ? 'block' : 'none';
